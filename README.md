@@ -1,19 +1,31 @@
+# 📚 W2R (Word to Remember) 📚
 
+W2R (Word to Remember) 是一个设计用来帮助你管理和追踪你的英语词汇学习进度的工具。它使用 SQLite 数据库来存储你遇到的新单词，允许你在你的词汇列表中添加、删除和查看单词。此外，它提供了一个 web 服务器功能来显示你的单词列表。
 
+## ✨ 特性
 
-目标
+- 向你的词汇列表中添加新单词
+- 从你的词汇列表中删除单词
+- 显示你的词汇列表的摘要
+- 设置默认数据库
+- 以各种格式（json、text、csv、anik）导出数据
+- 显示可用信息
+- 运行一个 web 服务器来显示你的单词列表
 
+## 📝 命令
 
-word -a xxxx,yyyy  add new word
-word -d xxxx       del word xxxx
-word -s            show summary
-word --dbname xxxx.sqlite  set the default database.
-word --dump --column xx,yy --format json|text|csv|anik
-word --desp  show avaible info.
-word -D   run webserver.
+- `w2r -a xxxx,yyyy` : 向你的词汇列表中添加新单词
+- `w2r -d xxxx` : 从你的词汇列表中删除特定单词
+- `w2r -s` : 显示你的词汇列表的摘要
+- `w2r --dbname xxxx.sqlite` : 设置默认数据库
+- `w2r --dump --column xx,yy --format json|text|csv|anik` : 以特定格式导出数据
+- `w2r --desp` : 显示可用信息
+- `w2r -D` : 运行一个 web 服务器来显示你的单词列表
 
+## 🚀 如何使用
 
+要使用 W2R，只需运行适当的命令并带上所需的选项。例如，要向你的词汇列表中添加新单词，你可以使用 `-a` 选项，后面跟上你想添加的单词。
 
-word manage a sqlite database, which stores new words.
+## 🎉 结论
 
-
+W2R 是任何希望提高英语词汇的人的强大工具。通过提供一种简单有效的方式来管理和追踪你的词汇进度，W2R 使学习新单词变得更容易，更愉快。
