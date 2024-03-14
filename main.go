@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"embed"
 	"flag"
 	"fmt"
 	"log"
@@ -18,6 +19,8 @@ import (
 var (
 	DbName  = ".word.sqlite" // in $HOME directory
 	Version = "0.1"
+	//go:embed words.html
+	WordsHTML embed.FS
 )
 
 // struct to store word info
@@ -176,28 +179,15 @@ func (w *WordDB) DelWord(word string) {
 }
 
 // create a http service to show all words, and generate links to online dictionary
-func (w *WordDB) RunWebServer() {
+func (w *WordDB) RunWebServer(port int) {
+	tmpl, err := template.ParseFS(WordsHTML, "words.html")
+	if err != nil {
+		// handle error
+		log.Fatal(err)
+	}
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		var words = w.GetAllWords()
-		tmpl := template.Must(template.New("").Parse(`
-            <table border=1>
-                <tr>
-                    <th>Word</th>
-                    <th>Added Count</th>
-                    <th>Lookup Count</th>
-                    <th>Translation</th>
-                </tr>
-                {{range .}}
-                <tr>
-                    <th><a href="/word/{{.Word}}">{{.Word}}</a></th>
-                    <td>{{.AddedCount}}</td>
-                    <td>{{.LookupCount}}</td>
-                    <td>{{.ZhTrans}}</td>
-                </tr>
-                {{end}}
-            </table>
-        `))
 
 		err := tmpl.Execute(rw, words)
 		if err != nil {
@@ -217,7 +207,8 @@ func (w *WordDB) RunWebServer() {
 		http.Redirect(rw, r, "https://dictionary.cambridge.org/dictionary/english-chinese-simplified/"+word, http.StatusMovedPermanently)
 
 	})
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Printf("Start web server at http://127.0.0.1:%d", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), nil))
 }
 
 func main() {
@@ -226,6 +217,7 @@ func main() {
 	show := flag.Bool("s", false, "show summary")
 	del := flag.String("d", "", "del word")
 	daemon := flag.Bool("D", false, "run webserver")
+	port := flag.Int("p", 8080, "webserver port")
 	showVersion := flag.Bool("v", false, "show version")
 	flag.Parse()
 	// show help when run with no argument
@@ -245,7 +237,12 @@ func main() {
 	w := WordDB{Db: db}
 
 	if daemon != nil && *daemon {
-		w.RunWebServer()
+		// port must be between 0~65535
+		if *port <= 0 || *port > 65535 {
+			log.Fatal("port must be between 0~65535")
+		}
+
+		w.RunWebServer(*port)
 		return
 	}
 
