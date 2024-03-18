@@ -10,30 +10,72 @@
 		width: 80%
 	}
 
+	table {
+		table-layout: fixed;
+		width: 80%;
+		border-collapse: collapse;
+		border: 3px solid darkslategrey;
+	}
+
+	thead th:nth-child(1) {
+		width: 30%;
+	}
+
+	thead th:nth-child(2) {
+		width: 10%;
+	}
+
+	thead th:nth-child(3) {
+		width: 10%;
+	}
+
+	thead th:nth-child(4) {
+		width: 50%;
+	}
+
 	th,
 	td {
-		text-algin: center;
-		padding: 10px
+		padding: 20px;
+	}
+
+	th {
+		letter-spacing: 2px;
+		text-transform: uppercase;
+	}
+
+	td {
+		letter-spacing: 1px;
+	}
+
+	tbody td {
+		text-align: center;
+	}
+
+	tfoot th {
+		text-align: right;
 	}
 
 	h1 {
 		text-align: center
 	}
+
+	tr:nth-child(even) {
+		background-color: #f2f2f2;
+	}
 </style>
 <h1>Word Summary</h1>
-<hr />
-<table border=1>
+<table>
 	<thead>
 		<tr>
 			<th>Word</th>
-			<th>Added Count</th>
-			<th>Lookup Count</th>
+			<th>Added</th>
+			<th>Lookuped</th>
 			<th>Translation</th>
 		</tr>
 	</thead>
 	{{range .}}
 	<tr>
-		<th><a href="/word/{{.Word}}">{{.Word}}</a></th>
+		<td><a href="/word/{{.Word}}">{{.Word}}</a></td>
 		<td>{{.AddedCount}}</td>
 		<td>{{.LookupCount}}</td>
 		<td>{{.ZhTrans}}</td>
