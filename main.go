@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"flag"
@@ -14,6 +15,7 @@ import (
 	"text/template"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/notsobad/w2r/worddb"
 )
 
 var (
@@ -23,18 +25,11 @@ var (
 	WordsHTML embed.FS
 )
 
-// struct to store word info
-type Word struct {
-	Word        string
-	ZhTrans     string
-	AddedCount  int
-	LookupCount int
-}
-
 // struct to store word database
 type WordDB struct {
 	// database connection
-	Db *sql.DB
+	Db  *sql.DB
+	Ctx context.Context
 }
 
 func isValidWord(s string) bool {
@@ -95,75 +90,45 @@ func (w *WordDB) Init() {
 	log.Printf("init database")
 }
 
-// run sql query
-func (w *WordDB) RunQuery(query string) {
-	db := w.Db
-	rows, err := db.Query(query)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-}
-
 // add word to database
 func (w *WordDB) AddWord(word string) {
-	// word must match an english word
-	db := w.Db
 
-	// check if word in database
-	var count int
-	err := db.QueryRow("SELECT count() FROM word WHERE word=?", word).Scan(&count)
-	if err != nil && err != sql.ErrNoRows {
-		log.Fatal(err)
-	}
+	queries := worddb.New(w.Db)
 
+	count, _ := queries.CountWord(w.Ctx, word)
 	if count == 0 {
-		// word not in database
-		// insert word
-		_, err := db.Exec("INSERT INTO word(word, zh_trans, added_count, lookup_count) values(?, ?, ?, ?)", word, "", 0, 0)
+		_, err := queries.CreateWord(w.Ctx, worddb.CreateWordParams{Word: word, ZhTrans: sql.NullString{}})
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("add word '%s'", word)
 	} else {
-		_, err = db.Exec("UPDATE word SET added_count=added_count+1 WHERE word=?", word)
+		err := queries.AddWordCount(w.Ctx, word)
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		log.Printf("word '%s' already in database, added_count++", word)
 	}
 }
 
-// get all words
-func (w *WordDB) GetAllWords() []Word {
-	var words []Word
-	rows, err := w.Db.Query("SELECT * FROM word")
-	if err != nil {
-		log.Printf("get all words error: %v", err)
-		return words
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var word Word
-		err := rows.Scan(&word.Word, &word.ZhTrans, &word.AddedCount, &word.LookupCount)
-		if err != nil {
-			log.Printf("get row error: %v", err)
-			continue
-		}
-		words = append(words, word)
-	}
-	return words
-}
-
 // show summary
 func (w *WordDB) ShowSummary() {
-	words := w.GetAllWords()
+
+	queries := worddb.New(w.Db)
+	words, _ := queries.Listword(w.Ctx)
+
 	fmt.Printf("%15s %10s %12s %-12s\n", "Word", "Added Count", "Lookup Count", "Translation")
 	for _, word := range words {
+		lookupCount := word.LookupCount.Int64
+		if !word.LookupCount.Valid {
+			lookupCount = 0
+		}
+		zhTrans := ""
+		if word.ZhTrans.Valid {
+			zhTrans = word.ZhTrans.String
+		}
 		fmt.Printf("%15s %10d %12d %-12s\n",
-			word.Word, word.AddedCount, word.LookupCount, word.ZhTrans)
+			word.Word, word.AddedCount.Int64, lookupCount, zhTrans)
 	}
 }
 
@@ -171,7 +136,9 @@ func (w *WordDB) ShowSummary() {
 func (w *WordDB) DelWord(word string) {
 	db := w.Db
 
-	_, err := db.Exec("DELETE FROM word WHERE word=?", word)
+	queries := worddb.New(db)
+	err := queries.DeleteWord(w.Ctx, word)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -187,7 +154,9 @@ func (w *WordDB) RunWebServer(port int) {
 	}
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		var words = w.GetAllWords()
+
+		queries := worddb.New(w.Db)
+		words, _ := queries.Listword(w.Ctx)
 
 		err := tmpl.Execute(rw, words)
 		if err != nil {
@@ -235,6 +204,7 @@ func main() {
 	defer db.Close()
 
 	w := WordDB{Db: db}
+	w.Ctx = context.Background()
 
 	if daemon != nil && *daemon {
 		// port must be between 0~65535
